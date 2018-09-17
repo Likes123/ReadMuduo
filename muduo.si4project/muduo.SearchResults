@@ -1,0 +1,3 @@
+---- handleEvent Matches (2 in 1 files) ----
+muduo::net::Channel in Channel.h (muduo\net) :   void handleEvent(Timestamp receiveTime);
+muduo::net::Channel in Channel.h (muduo\net) :   /// prevent the owner object being destroyed in handleEvent.

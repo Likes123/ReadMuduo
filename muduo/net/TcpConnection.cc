@@ -51,11 +51,11 @@ TcpConnection::TcpConnection(EventLoop* loop,
     localAddr_(localAddr),
     peerAddr_(peerAddr),
     highWaterMark_(64*1024*1024)
-{
+{//这里的回调函数处理了epoll事件，
   channel_->setReadCallback(
-      boost::bind(&TcpConnection::handleRead, this, _1));
+      boost::bind(&TcpConnection::handleRead, this, _1));//处理epollin
   channel_->setWriteCallback(
-      boost::bind(&TcpConnection::handleWrite, this));
+      boost::bind(&TcpConnection::handleWrite, this));//处理epollout
   channel_->setCloseCallback(
       boost::bind(&TcpConnection::handleClose, this));
   channel_->setErrorCallback(
@@ -138,7 +138,7 @@ void TcpConnection::sendInLoop(const StringPiece& message)
 
 void TcpConnection::sendInLoop(const void* data, size_t len)
 {
-  loop_->assertInLoopThread();
+  loop_->assertInLoopThread();	//再次判断loop是否在当前线程中
   ssize_t nwrote = 0;
   size_t remaining = len;
   bool faultError = false;
@@ -148,13 +148,15 @@ void TcpConnection::sendInLoop(const void* data, size_t len)
     return;
   }
   // if no thing in output queue, try writing directly
-  if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)
+  //这里是muduo的一个比较巧妙的地方，并不是无脑地往发送队列上挂，当发现当前的epoll没有写数据，发送队列上也没有数据时，直接write数据。
+  //因为使用的是非阻塞的write，能写多少算多少，写不完的再修改epoll事件，添加到发送队列
+  if (!channel_->isWriting() && outputBuffer_.readableBytes() == 0)//epoll event中没有写事件，发送buffer上也是空的，直接写数据
   {
     nwrote = sockets::write(channel_->fd(), data, len);
     if (nwrote >= 0)
     {
       remaining = len - nwrote;
-      if (remaining == 0 && writeCompleteCallback_)
+      if (remaining == 0 && writeCompleteCallback_)//直接通过write就将数据发送完成并且用户定义了写数据完成后的回调函数，这执行发送完成后的回调函数
       {
         loop_->queueInLoop(boost::bind(writeCompleteCallback_, shared_from_this()));
       }
@@ -344,14 +346,14 @@ void TcpConnection::connectDestroyed()
   channel_->remove();
 }
 
-void TcpConnection::handleRead(Timestamp receiveTime)
+void TcpConnection::handleRead(Timestamp receiveTime)//epollin事件触发此回调函数，此函数读取socket中的数据，之后调用回用户设定的回调函数
 {
   loop_->assertInLoopThread();
   int savedErrno = 0;
   ssize_t n = inputBuffer_.readFd(channel_->fd(), &savedErrno);
   if (n > 0)
   {
-    messageCallback_(shared_from_this(), &inputBuffer_, receiveTime);  //用户在最外层bind的onMessage函数层层传递，直到此时才调用
+    messageCallback_(shared_from_this(), &inputBuffer_, receiveTime);  //调用用户的回调函数。用户在最外层bind的onMessage函数层层传递，直到此时才调用
   }
   else if (n == 0)
   {

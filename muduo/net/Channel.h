@@ -75,7 +75,7 @@ class Channel : boost::noncopyable
   void enableWriting() { events_ |= kWriteEvent; update(); }
   void disableWriting() { events_ &= ~kWriteEvent; update(); }
   void disableAll() { events_ = kNoneEvent; update(); }
-  bool isWriting() const { return events_ & kWriteEvent; }
+  bool isWriting() const { return events_ & kWriteEvent; } //event_是当前epoll监听的事件，和kWriteEvent与之后true，当前event_有EPOLLOUT
   bool isReading() const { return events_ & kReadEvent; }
 
   // for Poller

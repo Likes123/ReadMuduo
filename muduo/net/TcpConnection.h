@@ -16,6 +16,7 @@
 #include <muduo/net/Callbacks.h>
 #include <muduo/net/Buffer.h>
 #include <muduo/net/InetAddress.h>
+#include <muduo/net/EventLoop.h>
 
 #include <boost/any.hpp>
 #include <boost/enable_shared_from_this.hpp>

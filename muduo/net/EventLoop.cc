@@ -123,11 +123,12 @@ void EventLoop::loop()
         it != activeChannels_.end(); ++it)
     {
       currentActiveChannel_ = *it;
-      currentActiveChannel_->handleEvent(pollReturnTime_);
+	 //在执行一个epoll事件触发的回调函数中，可能又触发了另外一个回调函数，muduo并不急于处理，而是放到一个数组中（pending function），在一轮循环后统一处理
+      currentActiveChannel_->handleEvent(pollReturnTime_); 
     }
     currentActiveChannel_ = NULL;
     eventHandling_ = false;
-    doPendingFunctors();
+    doPendingFunctors();//统一处理本轮loop中产生的挂起函数
   }
 
   LOG_TRACE << "EventLoop " << this << " stop looping";
